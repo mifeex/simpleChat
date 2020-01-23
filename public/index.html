@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Let's talk</title>
+    <style>
+      body { font: 16px Helvetica, Arial; }
+      form { background: #eee; padding: 3px; position: relative; bottom: 0; width: 50%; border-radius: 7px; outline: none; border: 1px solid #DCDCDC;}
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; outline: none;}
+      form button { width: 9%; background: #C0C0C0; border: none; padding: 10px; outline: none!important; border-radius: 0 7px 7px 0px;}
+      #messages { list-style-type: none; margin: 0; padding: 0; min-height: 650px;}
+      button {cursor: pointer;}
+      .you {background: #32CD32; color: #fff; padding: 10px 6px; border-radius: 20px; width: 150px; margin: 20px 0px}
+      .opponent {background: #20B2AA; color: #fff; padding: 10px 6px; border-radius: 20px; width: 150px; margin: 20px 0;}
+      #typing {color: #000; background: #eee; display: none}
+      small {color: #ece; position: absolute; margin: -10px -10px 10px 100px; text-decoration: underline;}
+      #container {border: 1px solid #eee; border-radius: 40px;}
+    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="container" id="container">
+      <ul id="messages">
+        <li id="typing"></li>
+      </ul>
+      <form action="" id="formId">
+        <input id="m" autocomplete="off" class="send" /><button>Send</button>
+      </form>      
+    </div>
+
+  </body>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  const formId = document.getElementById('formId');
+  const messages = document.getElementById('messages');
+  const m = document.getElementById('m');
+  const typing = document.getElementById('typing');
+
+  let date = Date();
+  let data = JSON.parse(sessionStorage.getItem('orders')) || [];
+
+  const toStorage = () => {
+    localStorage.setItem('orders', JSON.stringify(data)); // "переделываем" массив в строку с помощью JSON.stringify
+  }
+
+  setInterval(() =>{
+      date = Date();
+  }, 1000) 
+
+  const name = prompt("what's your name?");
+
+  formId.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    messages.insertAdjacentHTML("beforeend", `<li class="you"><small>${date.slice(15, 21)}</small>You: ${m.value}</li>`);
+    socket.emit('chat-message', m.value); // передаем данные на сервер используя метод emit
+    m.value = '';
+
+    return false;
+  })
+
+  m.addEventListener('change', (e) => {
+    e.preventDefault();
+
+    socket.emit('is-typing', name); // передаем данные на сервер если пользователь пишет
+  })
+
+  socket.emit('new-user', name); // отправляем данные о том, что новый пользователь присоединился к чату
+  
+  messages.insertAdjacentHTML("beforeend", `<li class="you"><small>${date.slice(15, 21)}</small>Welcome, ${name}</li>`);
+
+  socket.on('user-connected', (name) => { // выводим имя новичка в чат, его видят только другие пользователи
+    data.push(name);
+    toStorage();
+    messages.insertAdjacentHTML("beforeend", `<li class="opponent"><small>${date.slice(15, 21)}</small>${name} connected</li>`);
+  })
+
+  socket.on('user-disconnected', (name) => {
+    messages.insertAdjacentHTML("beforeend", `<li class="opponent"><small>${date.slice(15, 21)}</small>${name} disconnected</li>`);
+  })
+
+  socket.on('chat-message', (data) => { //получем данные, которые передавали с сервера
+    typing.style.display = 'none';
+    messages.insertAdjacentHTML("beforeend", `<li class="opponent"><small>${date.slice(15, 21)}</small>${data.name}: ${data.msg}
+    </li>`); // эта конструкция позволяет вставлять элементы 
+  })
+
+  socket.on('typing', (name) => {
+    typing.innerHTML = `${name} typing...`;
+    typing.style.display = 'block';
+  })
+</script>
+</html>
