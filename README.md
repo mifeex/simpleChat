@@ -1,4 +1,4 @@
-# simpleChat
+# Simple node.js chat
 
 This is a simple node.js chat which was making with socket.io and express(in the future I'll add MySql);
 How to check my job? 
